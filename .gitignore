@@ -1,0 +1,6 @@
+temp/
+build/
+log.txt
+*.exe
+*.exp
+*.pdb
