@@ -16,8 +16,6 @@ public:
 	IntroScene();
 	~IntroScene();
 
-	void		Init();
-
 	bool		HandleKeyPressed(Event::KeyEvent key);
 
 	void		Go();

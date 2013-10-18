@@ -1,62 +1,35 @@
 #include "director.h"
 #include "asset.h"
 #include "global.h"
-
-global_t G;
+#include "net_interface.h"
 
 namespace Director
 {
-	// 전방선언
-	void InternalLoop(scene_id_t first_scene);
-	
-
 	bool			switch_flag = false;
-	scene_id_t		next_scene;
+	Scene *			next_scene;
 
-	////////////// public ///////////////
-	void SwitchScene(scene_id_t sid)
+	void SwitchScene(Scene * _next_scene)
 	{
 		switch_flag = true;
-		next_scene = sid;
+		next_scene = _next_scene;
 	}
 
-	void Begin(wstring title, size_t width, size_t height, scene_id_t first_scene)
+	void Begin(Scene * first_scene)
 	{
-		G.window.create(VideoMode(width, height), title, Style::Titlebar);
-		G.window.setFramerateLimit(60U);
-
-		G.logger = new Logger(L"log.txt", G.window.getSystemHandle());
-
-		LoadAssets();
-
-		if(G.bg_music) G.bg_music->play();
-
-		CreateScenes();
-
-		InternalLoop(first_scene);
-
-		ReleaseAssets();
-
-		delete G.logger;
-	}
-
-	///////////// private ///////////
-	void InternalLoop(scene_id_t first_scene)
-	{
-		Scene *			scene;
+		Scene *			scene = first_scene;
 		client_msg_t	cl_msg;
 		Event			event;
 		Clock			clock;
 		int				last_time = 0;
-
-		scene = SCENE_TABLE[first_scene];
-		scene->Init();
 
 		while(G.window.isOpen())
 		{
 			G.present_time = clock.getElapsedTime().asMilliseconds();
 			G.delta_time = G.present_time - last_time;
 			last_time = G.present_time;
+
+			G.sfx_mgr.Update();
+			NetInterface::Update();
 
 			G.window.clear(sf::Color::Black);
 
@@ -91,8 +64,8 @@ namespace Director
 				if (switch_flag)
 				{
 					switch_flag = false;
-					scene = SCENE_TABLE[next_scene];
-					scene->Init();
+					delete scene;
+					scene = next_scene;
 				}
 			}
 		
@@ -101,8 +74,8 @@ namespace Director
 			if (switch_flag)
 			{
 				switch_flag = false;
-				scene = SCENE_TABLE[next_scene];
-				scene->Init();
+				delete scene;
+				scene = next_scene;
 			}
 			else
 			{
@@ -111,5 +84,6 @@ namespace Director
 		
 			_ASSERTE( _CrtCheckMemory( ) );
 		}
+		delete scene;
 	}
 }

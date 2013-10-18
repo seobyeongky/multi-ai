@@ -4,6 +4,7 @@
 
 	Logger class¿« header file
 =======================================================*/
+#pragma once
 
 // STL
 #include <string>

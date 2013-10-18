@@ -16,6 +16,9 @@
 
 #pragma comment(lib, "audiere.lib")
 
+#pragma comment(lib, "lua51.lib")
+#pragma comment(lib, "lua5.1.lib")
+
 #pragma comment(lib, "xmllite.lib")
 #pragma comment(lib, "shlwapi.lib")
 #pragma comment(lib, "winmm.lib")

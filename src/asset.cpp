@@ -334,19 +334,21 @@ bool LoadAssets()
 	
 	if(!LoadImages(L"image\\", L"file_info.xml"))
 	{
-		G.logger->Error(L"image load 실패");
+		G.logger->Error(L"LoadAssets: image load 실패");
 		return false;
 	}
 
 	if(!(G.audio_device = audiere::OpenDevice()))
 	{
-		G.logger->Warning(L"LoadImages : audio device 열기 실패");
+		G.logger->Warning(L"LoadAssets : audio device 열기 실패");
 	}
 	else
 	{
-		if(!(G.bg_music = audiere::OpenSound(G.audio_device, "sound\\bgm.wav", true)))
+		if (!(G.bg_music = audiere::OpenSound(G.audio_device, "sound\\bgm.wav", true))
+			|| !(G.attract_music = audiere::OpenSound(G.audio_device, "sound\\attract.mp3"))
+			|| !(G.fight_music = audiere::OpenSound(G.audio_device, "sound\\fight.mp3")))
 		{
-			G.logger->Error(L"LoadImages : 배경음악 열기 실패");
+			G.logger->Error(L"LoadAssets : 배경음악 열기 실패");
 		}
 	}
 

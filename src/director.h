@@ -1,10 +1,10 @@
 #pragma once
 
-#include "scene_table.h"
+#include "scene.h"
 
 namespace Director
 {
-	void SwitchScene(scene_id_t sid);
+	void SwitchScene(Scene * next_scene);
 
-	void Begin(wstring title, size_t width, size_t height, scene_id_t first_scene);
+	void Begin(Scene * first_scene);
 }

@@ -42,14 +42,14 @@
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)temp\$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)-d</TargetName>
-    <IncludePath>$(SolutionDir)dep\opznet\;$(SolutionDir)dep\sfml2\;$(SolutionDir)dep\audiere\;$(IncludePath)</IncludePath>
-    <LibraryPath>$(SolutionDir)dep\opznet\;$(SolutionDir)dep\sfml2\;$(SolutionDir)dep\audiere\;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(SolutionDir)dep\opznet\;$(SolutionDir)dep\sfml2\;$(SolutionDir)dep\audiere\;$(SolutionDir)dep\lua5.1\include\;$(IncludePath)</IncludePath>
+    <LibraryPath>$(SolutionDir)dep\opznet\;$(SolutionDir)dep\sfml2\;$(SolutionDir)dep\audiere\;$(SolutionDir)dep\lua5.1\lib\;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)temp\$(Configuration)\</IntDir>
-    <IncludePath>$(SolutionDir)dep\opznet\;$(SolutionDir)dep\sfml2\;$(SolutionDir)dep\audiere\;$(IncludePath)</IncludePath>
-    <LibraryPath>$(SolutionDir)dep\opznet\;$(SolutionDir)dep\sfml2\;$(SolutionDir)dep\audiere\;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(SolutionDir)dep\opznet\;$(SolutionDir)dep\sfml2\;$(SolutionDir)dep\audiere\;$(SolutionDir)dep\lua5.1\include\;$(IncludePath)</IncludePath>
+    <LibraryPath>$(SolutionDir)dep\opznet\;$(SolutionDir)dep\sfml2\;$(SolutionDir)dep\audiere\;$(SolutionDir)dep\lua5.1\lib\;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -83,13 +83,27 @@
     <ClCompile Include="basic\edit_text.cpp" />
     <ClCompile Include="basic\logger.cpp" />
     <ClCompile Include="basic\menu.cpp" />
+    <ClCompile Include="chat_box.cpp" />
     <ClCompile Include="director.cpp" />
+    <ClCompile Include="gamer.cpp" />
     <ClCompile Include="intro_scene.cpp" />
     <ClCompile Include="loaded_libs.cpp" />
+    <ClCompile Include="logic.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="menu_scene.cpp" />
-    <ClCompile Include="scene_table.cpp" />
-    <ClCompile Include="name_query_scene.cpp" />
+    <ClCompile Include="net_interface.cpp" />
+    <ClCompile Include="player.cpp" />
+    <ClCompile Include="play_scene.cpp" />
+    <ClCompile Include="pop_msg.cpp" />
+    <ClCompile Include="protocol.cpp" />
+    <ClCompile Include="query_scene.cpp" />
+    <ClCompile Include="sfx_mgr.cpp" />
+    <ClCompile Include="sv\sv_director.cpp" />
+    <ClCompile Include="sv\sv_global.cpp" />
+    <ClCompile Include="sv\sv_scene.cpp" />
+    <ClCompile Include="sv\sv_service.cpp" />
+    <ClCompile Include="sv\sv_play_scene.cpp" />
+    <ClCompile Include="sv\sv_util.cpp" />
+    <ClCompile Include="sv\sv_wait_scene.cpp" />
     <ClCompile Include="util.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -100,15 +114,31 @@
     <ClInclude Include="basic\menu.h" />
     <ClInclude Include="basic\signal_queue.h" />
     <ClInclude Include="basic\s_map.h" />
+    <ClInclude Include="chat_box.h" />
     <ClInclude Include="director.h" />
+    <ClInclude Include="gamer.h" />
     <ClInclude Include="global.h" />
     <ClInclude Include="internal.h" />
     <ClInclude Include="intro_scene.h" />
+    <ClInclude Include="logic.h" />
     <ClInclude Include="mem_leak.h" />
-    <ClInclude Include="menu_scene.h" />
+    <ClInclude Include="player.h" />
+    <ClInclude Include="play_scene.h" />
+    <ClInclude Include="pop_msg.h" />
+    <ClInclude Include="protocol.h" />
     <ClInclude Include="scene.h" />
-    <ClInclude Include="scene_table.h" />
-    <ClInclude Include="name_query_scene.h" />
+    <ClInclude Include="query_scene.h" />
+    <ClInclude Include="sfx_mgr.h" />
+    <ClInclude Include="sv\sv_director.h" />
+    <ClInclude Include="sv\sv_scene_ids.h" />
+    <ClInclude Include="sv\sv_global.h" />
+    <ClInclude Include="sv\sv_internal.h" />
+    <ClInclude Include="sv\sv_play_scene.h" />
+    <ClInclude Include="sv\sv_scene.h" />
+    <ClInclude Include="sv\sv_service.h" />
+    <ClInclude Include="net_interface.h" />
+    <ClInclude Include="sv\sv_wait_scene.h" />
+    <ClInclude Include="sv\sv_util.h" />
     <ClInclude Include="util.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

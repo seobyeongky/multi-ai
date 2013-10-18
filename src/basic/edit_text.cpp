@@ -29,6 +29,11 @@ void EditText::setCaretColor(const Color &color)
 	_caret.setFillColor(color);
 }
 
+void EditText::drawCaret(bool b)
+{
+	_draw_caret = b;
+}
+
 void EditText::setCharSize(size_t char_size)
 {
 	_text.setCharacterSize(char_size);
@@ -190,7 +195,7 @@ void EditText::draw(RenderTarget& target, RenderStates states) const
 {
 	states.transform *= getTransform();
 	target.draw(_text, states);
-	if (!_string.isEmpty())
+	if (!_string.isEmpty() && _draw_caret)
 		target.draw(_caret, states);
 }
 

@@ -17,10 +17,6 @@ class Scene {
 public:
 						 Scene() {}
 
-	// member 변수들을 초기화시키는 함수입니다.
-	// derived scene은 instance가 재사용되기 때문에 생성자함수가 아닌 Init함수로 초기화시키십시오.
-	virtual void		 Init() = 0;
-
 	// IME 관련...
 	virtual bool		 HandleIMEUpdated(wchar_t code, bool done) {return false; }
 

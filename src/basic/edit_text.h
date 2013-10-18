@@ -18,6 +18,7 @@ public:
 							  EditText(const Font & font, size_t char_size);
 							 ~EditText();
 
+	void					  drawCaret(bool b);
 	void					  setCharSize(size_t char_size);
 	void					  setTextColor(const Color &color);
 	void					  setCaretColor(const Color &color);
@@ -46,6 +47,8 @@ private:
 	bool			_comp;
 
 	bool			_ignore_next_char;
+
+	bool			_draw_caret;
 
 	void			updateCaret();
 };

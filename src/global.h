@@ -1,6 +1,7 @@
 #pragma once
 
 #include "internal.h"
+#include "sfx_mgr.h"
 
 struct global_t
 {
@@ -15,6 +16,10 @@ struct global_t
 
 	audiere::AudioDevicePtr		audio_device;
 	audiere::OutputStreamPtr	bg_music;
+	audiere::OutputStreamPtr	attract_music;
+	audiere::OutputStreamPtr	fight_music;
+	opzSFXMgr					sfx_mgr;
+
 
 	int							present_time;
 	int							delta_time;

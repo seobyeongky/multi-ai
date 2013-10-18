@@ -3,6 +3,9 @@
 #include "internal.h"
 #include "global.h"
 
+// 메시지 박스로 에러 메시지를 띄웁니다.
+void ErrorMsg(LPCWSTR format_string, ...);
+
 class DirChanger
 {
 public:
@@ -65,3 +68,8 @@ inline void FitScaleToScreen(T * object)
 					static_cast<float>(size.x),
 					static_cast<float>(size.y));
 }
+
+const Color & GetNextColor();
+
+void GetScriptFileList(vector<wstring> * ptr);
+void GetScriptFromFile(const wstring & file_name, wstring * buf);
