@@ -34,7 +34,7 @@ PlayScene::PlayScene(const wstring & name, const wstring & room_name,
 	{
 		AddPlayer(cl_info);
 	});
-
+	
 	NetInterface::RegisterPacketCallback(SV_TO_CL_CHAT, [this](Packet & packet)
 	{
 		ID cl_id;
@@ -44,6 +44,17 @@ PlayScene::PlayScene(const wstring & name, const wstring & room_name,
 		_chat_box.AddChatMsg(player.color, player.name,
 			Color(235, 235, 255), msg);
 		G.sfx_mgr.Play(SFX_LEAVE_CHAT);
+	});
+
+	NetInterface::RegisterPacketCallback(SV_TO_CL_SCRIPT_ERROR, [this](Packet & packet)
+	{
+		wstring scriptname;
+		wstring msg;
+		wstring admsg;
+		if (!(packet >> scriptname >> msg >> admsg)) return;
+		G.logger->Warning(L"[" + scriptname + L"]" + msg + "\n" + admsg);
+		_chat_box.AddInfoMsg(scriptname + L"에서 오류 발생! 자세한 내용은 log.txt참고");
+		G.sfx_mgr.Play(SFX_OMG);
 	});
 
 	NetInterface::RegisterPacketCallback(SV_TO_CL_REGISTER_DENIED, [this](Packet & packet)

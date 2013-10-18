@@ -4,6 +4,9 @@
 #include "sv_global.h"
 #include "sv_wait_scene.h"
 
+#include <sstream>
+
+
 extern "C" 
 { 
 	#include <lauxlib.h>
@@ -161,7 +164,12 @@ int SvPlayScene::GetNextHand(const char * tag)
 	}
 
 	int result = GetResult(L);
-	
+	if (result == -1)
+	{
+		IncreaseRandomCount();
+		result = rand() % 3;
+	}
+
 	lua_close(L);
 
 	return result;
@@ -177,13 +185,48 @@ bool SvPlayScene::CheckGameDraw()
 	}
 	return false;
 }
+void SvPlayScene::DumpState(lua_State * L, Packet & packet)
+{
+	wstringstream mystream;
+	lua_Debug ar;
+	if(lua_getstack(L, 0, &ar) == 0)
+	{
+		mystream << L"상세정보 얻기 실패" << endl;
+	}
+	else
+	{
+		lua_getinfo(L, "nSlufL", &ar);
+		if (ar.name != NULL)
+			mystream << L"이름" << ar.name << endl;
+		mystream << L"소스:" << ar.source << endl;
+		if (ar.currentline != -1)
+			mystream << L"실행라인:" << ar.currentline << endl;
+		mystream << L"소스코드:" << ar.short_src << endl;
+		mystream << L"함수 정의 코드 라인:" << ar.linedefined << endl;
+	}
+	packet << mystream.str();
+}
 
 void SvPlayScene::WarnMsg(lua_State * L, const wstring & msg)
 {
+	wstring & scriptname = svG.place[_cur_working_side].script_name;
+	Packet send_packet;
+	send_packet << TO_UINT16(SV_TO_CL_SCRIPT_ERROR)
+				<< scriptname
+				<< msg;
+	DumpState(L, send_packet);
+	SendToAll(send_packet);
 }
 
 void SvPlayScene::ErrorMsg(lua_State * L, const wstring & msg)
 {
+	wstring & scriptname = svG.place[_cur_working_side].script_name;
+	Packet send_packet;
+	send_packet << TO_UINT16(SV_TO_CL_SCRIPT_ERROR)
+				<< scriptname
+				<< msg;
+	DumpState(L, send_packet);
+	SendToAll(send_packet);
 }
 
 void SvPlayScene::IncreaseRandomCount()
@@ -219,12 +262,24 @@ int SvPlayScene::TL_SendN(lua_State *L)
 int SvPlayScene::TL_SendCurrentRecord(lua_State *L)
 {
 	int n = (int)lua_gettop(L);
+	if (n == 0)
+	{
+		inst->WarnMsg(L, L"GetRecordData함수를 매개 변수없이 호출했습니다.");
+		return 0;
+	}
+	if (!lua_isnumber(L, n))
+	{
+		string tn = lua_typename(L, lua_type(L, n));
+		wstring wtn(tn.begin(), tn.end());
+		inst->WarnMsg(L, L"GetRecrodData함수의 매개 변수가 숫자가 아닙니다.(" + wtn + L")");
+		return 0;
+	}
 	int i = (int)lua_tonumber(L, n);
 
-	if (inst->_n <= i)
+	if (i < 0 || inst->_n <= i)
 	{
 		wstring wmsg = L"GetRecordData함수가 잘못된 index(" + to_wstring(i) +  L")을 참조합니다.";
-		wmsg += L"\n현재 n:" + to_wstring(inst->_n);
+		wmsg += L"현재 n:" + to_wstring(inst->_n);
 		inst->WarnMsg(L, wmsg);
 		return 0;
 	}
@@ -246,12 +301,24 @@ int SvPlayScene::TL_SendCurrentRecord(lua_State *L)
 int SvPlayScene::TL_SendCurrentFightInfo(lua_State *L)
 {
 	int n = (int)lua_gettop(L);
+	if (n == 0)
+	{
+		inst->WarnMsg(L, L"GetFightData함수를 매개 변수없이 호출했습니다.");
+		return 0;
+	}
+	if (!lua_isnumber(L, n))
+	{
+		string tn = lua_typename(L, lua_type(L, n));
+		wstring wtn(tn.begin(), tn.end());
+		inst->WarnMsg(L, L"GetFightData함수의 매개 변수가 숫자가 아닙니다.(" + wtn + L")");
+		return 0;
+	}
 	int i = (int)lua_tonumber(L, n);
 
-	if (inst->_n <= i)
+	if (i < 0 || inst->_n <= i)
 	{
 		wstring wmsg = L"GetFightData함수가 잘못된 index(" + to_wstring(i) +  L")을 참조합니다.";
-		wmsg += L"\n현재 n:" + to_wstring(inst->_n);
+		wmsg += L"현재 n:" + to_wstring(inst->_n);
 		inst->WarnMsg(L, wmsg);
 		return 0;
 	}
@@ -282,6 +349,25 @@ int SvPlayScene::TL_GetRandom(lua_State *L)
 int SvPlayScene::TL_SaveData(lua_State *L)
 {
 	int n = (int)lua_gettop(L);
+	if (n <= 1)
+	{
+		inst->WarnMsg(L, L"SaveData함수의 매개 변수는 2개여야 합니다. (현재" + to_wstring(n) + L"개)");
+		return 0;
+	}
+	if (!lua_isnumber(L, n))
+	{
+		string tn = lua_typename(L, lua_type(L, n));
+		wstring wtn(tn.begin(), tn.end());
+		inst->WarnMsg(L, L"SaveData함수의 첫 번째 매개 변수가 숫자가 아닙니다.(" + wtn + L")");
+		return 0;
+	}
+	if (!lua_isnumber(L, n-1))
+	{
+		string tn = lua_typename(L, lua_type(L, n-1));
+		wstring wtn(tn.begin(), tn.end());
+		inst->WarnMsg(L, L"SaveData함수의 두 번째 매개 변수가 숫자가 아닙니다.(" + wtn + L")");
+		return 0;
+	}
 	int i = (int)lua_tonumber(L, n - 1);
 	int j = (int)lua_tonumber(L, n);
 
@@ -310,6 +396,18 @@ int SvPlayScene::TL_SaveData(lua_State *L)
 int SvPlayScene::TL_GetSavedData(lua_State *L)
 {
 	int n = (int)lua_gettop(L);
+	if (n == 0)
+	{
+		inst->WarnMsg(L, L"GetData함수가 매개 변수 없이 호출됐습니다.");
+		return 0;
+	}
+	if (!lua_isnumber(L, n))
+	{
+		string tn = lua_typename(L, lua_type(L, n));
+		wstring wtn(tn.begin(), tn.end());
+		inst->WarnMsg(L, L"GetData함수의 매개 변수가 숫자가 아닙니다.(" + wtn + L")");
+		return 0;
+	}
 	int i = (int)lua_tonumber(L, n);
 
 	vector<int> * vec_ptr = nullptr;
@@ -338,6 +436,16 @@ int SvPlayScene::GetResult(lua_State * L)
 {
 	lua_getglobal(L, "result");
 	int n = lua_gettop(L);
+	if (n == 0)
+	{
+		ErrorMsg(L, L"result값을 찾을 수가 없습니다!");
+		return -1;
+	}
+	if (!lua_isnumber(L, n))
+	{
+		ErrorMsg(L, L"result가 숫자가 아닙니다.");
+		return -1;
+	}
 	int result = (int)lua_tonumber(L, n);
 	
 	if(result < 0 || result > 2)result = 0;

@@ -12,6 +12,7 @@ opzSFXMgr::opzSFXMgr(void)
 	REGISTER(SFX_READY, "ready", "mp3", 1);
 	REGISTER(SFX_WIN, "win", "wav", 1);
 	REGISTER(SFX_ENTER, "enter", "wav", 1);
+	REGISTER(SFX_OMG, "omg", "wav", 1);
 
 	_device = OpenDevice();
 	
@@ -25,7 +26,8 @@ opzSFXMgr::~opzSFXMgr(void)
 
 void opzSFXMgr::Play(sfx_t sfx)
 {
-	if(!_device || sfx == SFX_NULL) return;
+	if (!_device || sfx == SFX_NULL) return;
+	if (_streams.size() > 5) return;
 	switch(_fileNumbers[sfx])
 	{
 	case 1:

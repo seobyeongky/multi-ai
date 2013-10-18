@@ -59,6 +59,7 @@ private:
 
 	bool		CheckGameDraw();
 
+	void		DumpState(lua_State * L, Packet & packet);
 	void		WarnMsg(lua_State * L, const wstring & msg);
 	void		ErrorMsg(lua_State * L, const wstring & msg);
 	void		IncreaseRandomCount();

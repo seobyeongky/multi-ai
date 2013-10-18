@@ -20,6 +20,7 @@ enum sfx_t
 	SFX_READY,
 	SFX_WIN,
 	SFX_ENTER,
+	SFX_OMG,
 	SFX_NUMBER
 };
 
