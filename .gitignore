@@ -1,6 +1,10 @@
 temp/
 build/
+test/
+test-d/
 log.txt
 *.exe
 *.exp
 *.pdb
+test.zip
+test-d.zip
