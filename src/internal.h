@@ -41,6 +41,7 @@
 #include "basic\\logger.h"
 #include "basic\edit_text.h"
 #include "basic\menu.h"
+#include "basic\string_convert.h"
 
 // PROTOCOL
 #include "protocol.h"

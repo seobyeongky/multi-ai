@@ -3,6 +3,7 @@
 #include "sv_director.h"
 #include "sv_global.h"
 #include "sv_wait_scene.h"
+#include "../basic/string_convert.h"
 
 #include <sstream>
 
@@ -11,6 +12,28 @@ extern "C"
 { 
 	#include <lauxlib.h>
 	#include <lualib.h>
+}
+
+static void DumpStack(lua_State *L, wstringstream & ss) {
+    int i=lua_gettop(L);
+    while(  i   ) {
+		int t = lua_type(L, i);
+		switch (t) {
+			case LUA_TSTRING:
+				ss << i << L": " << lua_tostring(L, i) << endl;
+				break;
+			case LUA_TBOOLEAN:
+				ss << i << L": " << (lua_toboolean(L, i) ? L"true" : L"false") << endl;
+				break;
+			case LUA_TNUMBER:
+				ss << i << L": " << lua_tonumber(L, i) << endl;
+				break;
+			default: 
+				ss << i << L": " << lua_typename(L, t) << endl;
+				break;
+		}
+		i--;
+    }
 }
 
 SvPlayScene * inst = nullptr;
@@ -27,12 +50,18 @@ SvPlayScene::SvPlayScene()
 	_left_data(),
 	_right_data(),
 	_continuous_draw_count(0),
+	_left_result(),
+	_right_result(),
+	_cur_result(nullptr),
 	_packet(),
 	_game_over(false),
 	_nr_game_over_cl(0),
 	_cur_working_side(0)
 {
 	inst = this;
+
+	_left_result.log.imbue(locale("korean"));
+	_right_result.log.imbue(locale("korean"));
 
 	_packet.clear();
 }
@@ -73,14 +102,43 @@ void SvPlayScene::Go()
 		return;
 	}
 
+	//
+	// Clear (left/right) result
+	//
+	_left_result.clear();
+	_right_result.clear();
+
+	//
+	// Run Lua script and get hand
+	//
+	_cur_result = &_left_result;
 	int left_hand = GetNextHandFromLeft();
+	_cur_result = &_right_result;
 	int right_hand = GetNextHandFromRight();
 
 	_left.push_back(left_hand);
 	_right.push_back(right_hand);
 
-	_packet.results.push_back(result_t(left_hand, right_hand));
+	//
+	// packet works
+	//
+	_left_result.hand = left_hand;
+	_right_result.hand = right_hand;
 
+	result_t left_result;
+	left_result.hand = _left_result.hand;
+	left_result.penalty = _left_result.penalty;
+	left_result.log = _left_result.log.str();
+	result_t right_result;
+	right_result.hand = _right_result.hand;
+	right_result.penalty = _right_result.penalty;
+	right_result.log = _right_result.log.str();
+	_packet.results.push_back(pair<result_t,result_t>(left_result, right_result));
+
+
+	//
+	// server logic
+	//
 	int left_dpoint = GetPoint(static_cast<hand_t>(left_hand), static_cast<hand_t>(right_hand));
 	int right_dpoint = GetPoint(static_cast<hand_t>(right_hand), static_cast<hand_t>(left_hand));
 	_left_hp += left_dpoint;
@@ -89,7 +147,13 @@ void SvPlayScene::Go()
 	if (left_dpoint == 0 && right_dpoint == 0)
 	{
 		++_continuous_draw_count;
-		if (CheckGameDraw()) return;
+		
+		if (_continuous_draw_count > MAX_CONTINUOUS_DRAW)
+		{
+			SendBasicPacket();
+			_game_over = true;
+			return;
+		}
 	}
 	else
 		_continuous_draw_count = 0;
@@ -140,12 +204,64 @@ int SvPlayScene::GetNextHandFromRight()
 	return GetNextHand("right");
 }
 
+/*
+static int  Traceback(lua_State *L) {
+    lua_getfield(L, LUA_GLOBALSINDEX, "debug");
+    lua_getfield(L, -1, "traceback");
+    lua_pushvalue(L, 1);
+    lua_pushinteger(L, 2);
+    lua_call(L, 2, 1);
+	string sk = lua_tostring(L, -1);
+//	ss << lua_tostring(L, -1) << endl;
+	return 1;
+}
+*/
+
+int SvPlayScene::l_my_print(lua_State* L) {
+	wstringstream & ss = inst->_cur_result->log;
+	int i=lua_gettop(L);
+    while(  i   ) {
+		int t = lua_type(L, i);
+		switch (t) {
+			case LUA_TSTRING:
+				ss << lua_tostring(L, i);
+				break;
+			case LUA_TBOOLEAN:
+				ss << (lua_toboolean(L, i) ? L"true" : L"false");
+				break;
+			case LUA_TNUMBER:
+				ss << lua_tonumber(L, i);
+				break;
+			default: 
+				ss << lua_typename(L, t);
+				break;
+		}
+		if (i > 1)
+		{
+			ss << L'\t';
+		}
+		i--;
+    }
+	ss << endl;
+
+    return 0;
+}
+
+static const struct luaL_reg printlib [] = {
+  {"print", SvPlayScene::l_my_print},
+  {NULL, NULL} /* end of array */
+};
+
 int SvPlayScene::GetNextHand(const char * tag)
 {
 	place_t & my_place = svG.place[_cur_working_side];
 
 	lua_State* L = lua_open();
 	luaopen_base(L);
+	luaopen_debug(L);
+	lua_getglobal(L, "_G");
+	luaL_register(L, NULL, printlib);
+	lua_pop(L, 1);
 	lua_register(L, "GetN", TL_SendN);
 	lua_register(L, "GetRecordData", TL_SendCurrentRecord);
 	lua_register(L, "GetFightData", TL_SendCurrentFightInfo);
@@ -158,9 +274,9 @@ int SvPlayScene::GetNextHand(const char * tag)
 	int res;
 	if ((res = lua_pcall(L, 0, 1, 0)) != 0)
 	{
-		wchar_t buf[512];
-		swprintf_s(buf, L"%hs", lua_tostring(L, -1));
-		ErrorMsg(L, buf);
+		wstringstream ss;
+		ss << L"Lua runtime exception 발생! : " << lua_tostring(L, -1) << endl;
+//		Traceback(L);
 	}
 
 	int result = GetResult(L);
@@ -175,25 +291,11 @@ int SvPlayScene::GetNextHand(const char * tag)
 	return result;
 }
 
-bool SvPlayScene::CheckGameDraw()
-{
-	if (_continuous_draw_count > 100)
-	{
-		SendGameDrawPacket();
-		SvDirector::SwitchScene(new SvWaitScene());
-		return true;
-	}
-	return false;
-}
 void SvPlayScene::DumpState(lua_State * L, Packet & packet)
 {
 	wstringstream mystream;
 	lua_Debug ar;
-	if(lua_getstack(L, 0, &ar) == 0)
-	{
-		mystream << L"상세정보 얻기 실패" << endl;
-	}
-	else
+	if(lua_getstack(L, 0, &ar) != 0)
 	{
 		lua_getinfo(L, "nSlufL", &ar);
 		if (ar.name != NULL)
@@ -207,28 +309,6 @@ void SvPlayScene::DumpState(lua_State * L, Packet & packet)
 	packet << mystream.str();
 }
 
-void SvPlayScene::WarnMsg(lua_State * L, const wstring & msg)
-{
-	wstring & scriptname = svG.place[_cur_working_side].script_name;
-	Packet send_packet;
-	send_packet << TO_UINT16(SV_TO_CL_SCRIPT_ERROR)
-				<< scriptname
-				<< msg;
-	DumpState(L, send_packet);
-	SendToAll(send_packet);
-}
-
-void SvPlayScene::ErrorMsg(lua_State * L, const wstring & msg)
-{
-	wstring & scriptname = svG.place[_cur_working_side].script_name;
-	Packet send_packet;
-	send_packet << TO_UINT16(SV_TO_CL_SCRIPT_ERROR)
-				<< scriptname
-				<< msg;
-	DumpState(L, send_packet);
-	SendToAll(send_packet);
-}
-
 void SvPlayScene::IncreaseRandomCount()
 {
 	if (_cur_working_side == 0)
@@ -238,7 +318,8 @@ void SvPlayScene::IncreaseRandomCount()
 		{
 			_left_random_count = 0;
 			_left_hp--;
-			_packet.left_penalty++;
+			_left_result.penalty++;
+			_left_result.log << L"[INFO] Random penalty!" << endl;
 		}
 	}
 	else
@@ -248,7 +329,8 @@ void SvPlayScene::IncreaseRandomCount()
 		{
 			_right_random_count = 0;
 			_right_hp--;
-			_packet.right_penalty++;
+			_right_result.penalty++;
+			_right_result.log << L"[INFO] Random penalty!" << endl;
 		}
 	}
 }
@@ -264,23 +346,29 @@ int SvPlayScene::TL_SendCurrentRecord(lua_State *L)
 	int n = (int)lua_gettop(L);
 	if (n == 0)
 	{
-		inst->WarnMsg(L, L"GetRecordData함수를 매개 변수없이 호출했습니다.");
+		inst->_cur_result->log
+			<< L"[WARNING] GetRecordData함수를 매개 변수없이 호출했습니다."
+			<< endl;
 		return 0;
 	}
 	if (!lua_isnumber(L, n))
 	{
-		string tn = lua_typename(L, lua_type(L, n));
-		wstring wtn(tn.begin(), tn.end());
-		inst->WarnMsg(L, L"GetRecrodData함수의 매개 변수가 숫자가 아닙니다.(" + wtn + L")");
+		inst->_cur_result->log
+			<< L"[WARNING] GetRecrodData함수의 매개 변수가 숫자가 아닙니다.("
+			<< lua_typename(L, lua_type(L, n))
+			<< L")"
+			<< endl;
 		return 0;
 	}
 	int i = (int)lua_tonumber(L, n);
 
 	if (i < 0 || inst->_n <= i)
 	{
-		wstring wmsg = L"GetRecordData함수가 잘못된 index(" + to_wstring(i) +  L")을 참조합니다.";
-		wmsg += L"현재 n:" + to_wstring(inst->_n);
-		inst->WarnMsg(L, wmsg);
+		inst->_cur_result->log
+			<< L"[WARNING] GetRecordData함수가 잘못된 index("
+			<< i
+			<< L")을 참조합니다."
+			<< endl;
 		return 0;
 	}
 
@@ -303,23 +391,28 @@ int SvPlayScene::TL_SendCurrentFightInfo(lua_State *L)
 	int n = (int)lua_gettop(L);
 	if (n == 0)
 	{
-		inst->WarnMsg(L, L"GetFightData함수를 매개 변수없이 호출했습니다.");
+		inst->_cur_result->log
+			<< L"[WARNING] GetFightData함수를 매개 변수없이 호출했습니다."
+			<< endl;
 		return 0;
 	}
 	if (!lua_isnumber(L, n))
 	{
-		string tn = lua_typename(L, lua_type(L, n));
-		wstring wtn(tn.begin(), tn.end());
-		inst->WarnMsg(L, L"GetFightData함수의 매개 변수가 숫자가 아닙니다.(" + wtn + L")");
+		inst->_cur_result->log
+			<< L"[WARNING] GetFightData함수의 매개 변수가 숫자가 아닙니다.("
+			<< lua_typename(L, lua_type(L, n))
+			<< L")"
+			<< endl;
 		return 0;
 	}
 	int i = (int)lua_tonumber(L, n);
 
 	if (i < 0 || inst->_n <= i)
 	{
-		wstring wmsg = L"GetFightData함수가 잘못된 index(" + to_wstring(i) +  L")을 참조합니다.";
-		wmsg += L"현재 n:" + to_wstring(inst->_n);
-		inst->WarnMsg(L, wmsg);
+		inst->_cur_result->log
+			<<  L"[WARNING] GetFightData함수가 잘못된 index("
+			<< i
+			<< L")을 참조합니다.";
 		return 0;
 	}
 	// point[i][j] : i와 j가 싸웠을 때 i쪽이 받는 점수 
@@ -351,21 +444,29 @@ int SvPlayScene::TL_SaveData(lua_State *L)
 	int n = (int)lua_gettop(L);
 	if (n <= 1)
 	{
-		inst->WarnMsg(L, L"SaveData함수의 매개 변수는 2개여야 합니다. (현재" + to_wstring(n) + L"개)");
+		inst->_cur_result->log
+			<< L"[WARNING] SaveData함수의 매개 변수는 2개여야 합니다. ("
+			<< n
+			<< L"개로 호출함)"
+			<< endl;
 		return 0;
 	}
 	if (!lua_isnumber(L, n))
 	{
-		string tn = lua_typename(L, lua_type(L, n));
-		wstring wtn(tn.begin(), tn.end());
-		inst->WarnMsg(L, L"SaveData함수의 첫 번째 매개 변수가 숫자가 아닙니다.(" + wtn + L")");
+		inst->_cur_result->log
+			<< L"[WARNING] SaveData함수의 첫 번째 매개 변수가 숫자가 아닙니다.("
+			<< lua_typename(L, lua_type(L, n))
+			<< L")"
+			<< endl;
 		return 0;
 	}
 	if (!lua_isnumber(L, n-1))
 	{
-		string tn = lua_typename(L, lua_type(L, n-1));
-		wstring wtn(tn.begin(), tn.end());
-		inst->WarnMsg(L, L"SaveData함수의 두 번째 매개 변수가 숫자가 아닙니다.(" + wtn + L")");
+		inst->_cur_result->log
+			<< L"[WARNING] SaveData함수의 두 번째 매개 변수가 숫자가 아닙니다.("
+			<< lua_typename(L, lua_type(L, n-1))
+			<< L")"
+			<< endl;
 		return 0;
 	}
 	int i = (int)lua_tonumber(L, n - 1);
@@ -373,8 +474,11 @@ int SvPlayScene::TL_SaveData(lua_State *L)
 
 	if (i < 0)
 	{
-		wstring wmsg = L"SaveData함수가 0이하의 index(" + to_wstring(i) + L")에 접근합니다.";
-		inst->WarnMsg(L, wmsg);
+		inst->_cur_result->log
+			<< L"[WARNING] SaveData함수가 0이하의 index("
+			<< i
+			<< L")에 접근합니다."
+			<< endl;
 		return 0;
 	}
 
@@ -398,14 +502,18 @@ int SvPlayScene::TL_GetSavedData(lua_State *L)
 	int n = (int)lua_gettop(L);
 	if (n == 0)
 	{
-		inst->WarnMsg(L, L"GetData함수가 매개 변수 없이 호출됐습니다.");
+		inst->_cur_result->log
+			<< L"[WARNING] GetData함수가 매개 변수 없이 호출됐습니다."
+			<< endl;
 		return 0;
 	}
 	if (!lua_isnumber(L, n))
 	{
-		string tn = lua_typename(L, lua_type(L, n));
-		wstring wtn(tn.begin(), tn.end());
-		inst->WarnMsg(L, L"GetData함수의 매개 변수가 숫자가 아닙니다.(" + wtn + L")");
+		inst->_cur_result->log
+			<< L"[WARNING] GetData함수의 매개 변수가 숫자가 아닙니다.("
+			<< lua_typename(L, lua_type(L, n))
+			<< L")"
+			<< endl;
 		return 0;
 	}
 	int i = (int)lua_tonumber(L, n);
@@ -419,9 +527,12 @@ int SvPlayScene::TL_GetSavedData(lua_State *L)
 	if (i < 0 || static_cast<int>(vec_ptr->size()) <= i)
 	{
 		lua_pushnumber(L, 0);
-		wstring warn_msg = L"GetData함수가 잘못된 index(" + to_wstring(i) + L")를 참조합니다.";
-		warn_msg += L"\n현재 저장된 배열의 크기는 " + to_wstring(vec_ptr->size());
-		inst->WarnMsg(L, warn_msg);
+
+		inst->_cur_result->log
+			<< L"[WARNING] GetData함수가 잘못된 index("
+			<< i
+			<< L")를 참조합니다."
+			<< endl;
 		return 0;
 	}
 	else
@@ -438,25 +549,26 @@ int SvPlayScene::GetResult(lua_State * L)
 	int n = lua_gettop(L);
 	if (n == 0)
 	{
-		ErrorMsg(L, L"result값을 찾을 수가 없습니다!");
+		inst->_cur_result->log
+			<< L"[ERROR] result값을 찾을 수가 없습니다!"
+			<< endl;
 		return -1;
 	}
-	if (!lua_isnumber(L, n))
+	if (!lua_isnumber(L, -1))
 	{
-		ErrorMsg(L, L"result가 숫자가 아닙니다.");
+		inst->_cur_result->log
+			<< L"[ERROR] result가 숫자가 아닙니다."
+			<< L"(다른 에러가 Lua-C 스택을 오염시켜서 생긴 부작용일 가능성도 있음)"
+			<< endl
+			<< L"- Stack dump"
+			<< endl;
+		DumpStack(L, inst->_cur_result->log);
 		return -1;
 	}
-	int result = (int)lua_tonumber(L, n);
+	int result = (int)lua_tonumber(L, -1);
 	
 	if(result < 0 || result > 2)result = 0;
 	return result;
-}
-
-void SvPlayScene::SendGameDrawPacket()
-{
-	Packet send_packet;
-	send_packet << TO_UINT16(SV_TO_CL_GAME_DRAW);
-	SendToAll(send_packet);
 }
 
 void SvPlayScene::SendBasicPacket()
@@ -465,15 +577,8 @@ void SvPlayScene::SendBasicPacket()
 
 	Packet send_packet;
 	send_packet	<< TO_UINT16(SV_TO_CL_BASIC_INFO)
-				<< _packet.results.size();
+				<< _packet;
 
-	for (auto it = _packet.results.begin(); it != _packet.results.end(); ++it)
-	{
-		send_packet << TO_UINT16((*it).left) << TO_UINT16((*it).right);
-	}
-
-	send_packet	<< TO_UINT16(_packet.left_penalty)
-				<< TO_UINT16(_packet.right_penalty);
 	SendToAll(send_packet);
 
 	_packet.clear();

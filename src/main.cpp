@@ -35,6 +35,8 @@ int main(int argc, char * argv[])
 {
 	_wsetlocale(LC_ALL, L"korean");
 
+	Sleep(1000);
+
 	G.window.create(VideoMode(640, 480), L"기막힌 가위바위보", Style::Titlebar || Style::Close);
 	G.window.setFramerateLimit(60U);
 
@@ -48,3 +50,4 @@ int main(int argc, char * argv[])
 	
 	return 0;
 }
+

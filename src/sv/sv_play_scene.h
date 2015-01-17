@@ -2,6 +2,8 @@
 
 #include "sv_scene.h"
 
+#include <sstream>
+
 class SvPlayScene : public SvScene {
 public:
 	SvPlayScene();
@@ -14,23 +16,19 @@ public:
 									cl_to_sv_t header,
 									Packet & recv_packet);
 	virtual void Go();
+	
+	static int	l_my_print(lua_State* L);
 
 private:
-	struct result_t
+	struct result_buf_t
 	{
-		int left;
-		int right;
+		int hand;
+		int penalty;
+		wstringstream log;
 
-		result_t(int _left, int _right):left(_left),right(_right){}
-	};
-
-	struct basic_packet_t
-	{
-		vector<result_t> results;
-		int left_penalty;
-		int right_penalty;
-
-		void clear(){results.clear(); left_penalty = right_penalty = 0;}
+		result_buf_t(){}
+		result_buf_t(const result_buf_t & other){}
+		void clear() {hand = 0; penalty = 0; log.str(wstring()); log.clear();}
 	};
 
 private:
@@ -44,8 +42,11 @@ private:
 	vector<int>		_left_data;
 	vector<int>		_right_data;
 
-	int				_continuous_draw_count;
+	size_t			_continuous_draw_count;
 
+	result_buf_t	_left_result;
+	result_buf_t	_right_result;
+	result_buf_t *	_cur_result;
 	basic_packet_t	_packet;
 
 	bool			_game_over;
@@ -57,11 +58,7 @@ private:
 	int			GetNextHandFromRight();
 	int			GetNextHand(const char * tag);
 
-	bool		CheckGameDraw();
-
 	void		DumpState(lua_State * L, Packet & packet);
-	void		WarnMsg(lua_State * L, const wstring & msg);
-	void		ErrorMsg(lua_State * L, const wstring & msg);
 	void		IncreaseRandomCount();
 
 	// bound To Lua functions....

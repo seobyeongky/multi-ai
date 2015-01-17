@@ -114,6 +114,9 @@
     <ClCompile Include="sfx_mgr.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="basic\string_convert.cpp">
+      <Filter>소스 파일\basic</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="internal.h">
@@ -123,9 +126,6 @@
       <Filter>소스 파일\basic</Filter>
     </ClInclude>
     <ClInclude Include="basic\d_input.h">
-      <Filter>소스 파일\basic</Filter>
-    </ClInclude>
-    <ClInclude Include="mem_leak.h">
       <Filter>소스 파일\basic</Filter>
     </ClInclude>
     <ClInclude Include="scene.h">
@@ -214,6 +214,9 @@
     </ClInclude>
     <ClInclude Include="sfx_mgr.h">
       <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="basic\string_convert.h">
+      <Filter>소스 파일\basic</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

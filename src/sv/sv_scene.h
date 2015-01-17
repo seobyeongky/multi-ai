@@ -16,6 +16,7 @@ public:
 	// server context에는 나간 client가 아직 있는 상태입니다.
 	virtual void		HandleGoneCl(const client_t & gone_cl) = 0;
 
+
 	virtual void		HandleRecvPacket(	const client_t & cl,
 											cl_to_sv_t header,
 											Packet & recv_packet);

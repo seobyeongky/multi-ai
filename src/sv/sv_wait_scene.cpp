@@ -4,6 +4,8 @@
 #include "sv_director.h"
 #include "sv_play_scene.h"
 
+#include "../internal.h"
+
 SvWaitScene::SvWaitScene()
 {
 	for (int side = 0; side < 2; ++side)
@@ -77,7 +79,7 @@ void SvWaitScene::HandleRecvPacket(	const client_t & cl,
 			wstring buf;
 			if (!(recv_packet	>> place.script_name
 								>> buf)) return;
-			place.script_buf.assign(buf.begin(), buf.end());
+			uni2multi(buf, &place.script_buf);
 			Packet send_packet;
 			send_packet << TO_UINT16(SV_TO_CL_REGISTER)
 						<< TO_UINT16(side)

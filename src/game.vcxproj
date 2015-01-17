@@ -18,13 +18,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v110_xp</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v110_xp</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -43,13 +43,13 @@
     <IntDir>$(SolutionDir)temp\$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)-d</TargetName>
     <IncludePath>$(SolutionDir)dep\opznet\;$(SolutionDir)dep\sfml2\;$(SolutionDir)dep\audiere\;$(SolutionDir)dep\lua5.1\include\;$(IncludePath)</IncludePath>
-    <LibraryPath>$(SolutionDir)dep\opznet\;$(SolutionDir)dep\sfml2\;$(SolutionDir)dep\audiere\;$(SolutionDir)dep\lua5.1\lib\;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(SolutionDir)dep\opznet\;$(SolutionDir)dep\sfml2\;$(SolutionDir)dep\audiere\;$(SolutionDir)dep\lua5.1\lib\;C:\Program Files %28x86%29\Microsoft DirectX SDK %28June 2010%29\Lib\x86;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)temp\$(Configuration)\</IntDir>
     <IncludePath>$(SolutionDir)dep\opznet\;$(SolutionDir)dep\sfml2\;$(SolutionDir)dep\audiere\;$(SolutionDir)dep\lua5.1\include\;$(IncludePath)</IncludePath>
-    <LibraryPath>$(SolutionDir)dep\opznet\;$(SolutionDir)dep\sfml2\;$(SolutionDir)dep\audiere\;$(SolutionDir)dep\lua5.1\lib\;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(SolutionDir)dep\opznet\;$(SolutionDir)dep\sfml2\;$(SolutionDir)dep\audiere\;$(SolutionDir)dep\lua5.1\lib\;C:\Program Files %28x86%29\Microsoft DirectX SDK %28June 2010%29\Lib\x86;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -83,6 +83,7 @@
     <ClCompile Include="basic\edit_text.cpp" />
     <ClCompile Include="basic\logger.cpp" />
     <ClCompile Include="basic\menu.cpp" />
+    <ClCompile Include="basic\string_convert.cpp" />
     <ClCompile Include="chat_box.cpp" />
     <ClCompile Include="director.cpp" />
     <ClCompile Include="gamer.cpp" />
@@ -113,6 +114,7 @@
     <ClInclude Include="basic\logger.h" />
     <ClInclude Include="basic\menu.h" />
     <ClInclude Include="basic\signal_queue.h" />
+    <ClInclude Include="basic\string_convert.h" />
     <ClInclude Include="basic\s_map.h" />
     <ClInclude Include="chat_box.h" />
     <ClInclude Include="director.h" />
@@ -121,7 +123,6 @@
     <ClInclude Include="internal.h" />
     <ClInclude Include="intro_scene.h" />
     <ClInclude Include="logic.h" />
-    <ClInclude Include="mem_leak.h" />
     <ClInclude Include="player.h" />
     <ClInclude Include="play_scene.h" />
     <ClInclude Include="pop_msg.h" />

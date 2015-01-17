@@ -41,13 +41,7 @@ private:
 		FILE_MENU
 	};
 
-	struct result_t
-	{
-		hand_t left;
-		hand_t right;
-	};
-
-	typedef queue<result_t> result_queue_t;
+	typedef queue<pair<result_t,result_t>> result_queue_t;
 
 private:
 	bool			_is_host;
@@ -64,9 +58,16 @@ private:
 	LeftGamer		_left_gamer;
 	bool			_right_exists;
 	RightGamer		_right_gamer;
+	size_t			_continuous_draw_count;
+	size_t			_round;
 	result_queue_t	_result_queue;
 	PopMsg			_pop;
 	int				_accum_time;
+	Text			_player_text;
+	wofstream		_gamelog;
+	Sprite			_bg;
+
+	void	HandleGameResult();
 
 	void	HandleQueue();
 	void	HandleNetwork();
@@ -74,4 +75,5 @@ private:
 	void	AddPlayer(const client_t & basic_info);
 	void	SyncPlayers();
 	void	SendGameOverAckPacket();
+	void	UpdatePlayerText();
 };

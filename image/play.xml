@@ -1,15 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Created with TexturePacker http://www.codeandweb.com/texturepacker-->
-<!-- $TexturePacker:SmartUpdate:a204b897769821e20bdcbbcc5ee6f7f6:1/1$ -->
-<Imageset Name="play" Imagefile="play.png" NativeHorzRes="1024" NativeVertRes="512" AutoScaled="false">
-    <Image Name="bar-bg" XPos="2" YPos="2" Width="200" Height="30"/>
-    <Image Name="hbar-green" XPos="204" YPos="2" Width="200" Height="30"/>
-    <Image Name="hbar-orange" XPos="406" YPos="2" Width="200" Height="30"/>
-    <Image Name="hbar-red" XPos="608" YPos="2" Width="200" Height="30"/>
-    <Image Name="left-paper" XPos="2" YPos="34" Width="278" Height="223"/>
-    <Image Name="left-rock" XPos="282" YPos="34" Width="278" Height="223"/>
-    <Image Name="left-scissors" XPos="562" YPos="34" Width="278" Height="223"/>
-    <Image Name="right-paper" XPos="2" YPos="259" Width="278" Height="223"/>
-    <Image Name="right-rock" XPos="282" YPos="259" Width="278" Height="223"/>
-    <Image Name="right-scissors" XPos="562" YPos="259" Width="278" Height="223"/>
+<!-- $TexturePacker:SmartUpdate:7114ea7e60bf4420e660dc4917493a38:b4f6e3f6c821d7eecc6a17cc47b0a419:b60ca291e23d98d999aa1d50ffc52e62$ -->
+<Imageset Name="play" Imagefile="play.png" NativeHorzRes="1024" NativeVertRes="1024" AutoScaled="false">
+    <Image Name="bar-bg" XPos="608" YPos="2" Width="210" Height="40"/>
+    <Image Name="bg" XPos="2" YPos="494" Width="480" Height="360"/>
+    <Image Name="hbar-green" XPos="406" YPos="2" Width="200" Height="30"/>
+    <Image Name="hbar-orange" XPos="2" YPos="2" Width="200" Height="30"/>
+    <Image Name="hbar-red" XPos="204" YPos="2" Width="200" Height="30"/>
+    <Image Name="left-paper" XPos="2" YPos="269" Width="278" Height="223"/>
+    <Image Name="left-rock" XPos="562" YPos="269" Width="278" Height="223"/>
+    <Image Name="left-scissors" XPos="562" YPos="44" Width="278" Height="223"/>
+    <Image Name="right-paper" XPos="282" YPos="44" Width="278" Height="223"/>
+    <Image Name="right-rock" XPos="2" YPos="44" Width="278" Height="223"/>
+    <Image Name="right-scissors" XPos="282" YPos="269" Width="278" Height="223"/>
 </Imageset>

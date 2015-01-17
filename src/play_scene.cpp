@@ -5,6 +5,9 @@
 #include "util.h"
 #include "logic.h"
 
+#include <iostream>
+#include <sstream>
+
 PlayScene::PlayScene(const wstring & name, const wstring & room_name,
 					 bool is_host, ID my_id)
 	: _is_host(is_host), _my_id(my_id),
@@ -18,9 +21,14 @@ PlayScene::PlayScene(const wstring & name, const wstring & room_name,
 	_left_gamer(),
 	_right_exists(false),
 	_right_gamer(),
+	_continuous_draw_count(0),
+	_round(0),
 	_result_queue(),
 	_pop(),
-	_accum_time(0)
+	_accum_time(0),
+	_player_text(L"", G.default_font, 20U),
+	_gamelog(L"gamelog.txt", ios::out),
+	_bg(*G.sprite_map[L"bg"])
 {
 	G.window.setTitle(L"기막힌 가위바위보 - " + room_name + L"방");
 	_room_name_text.setPosition(50.f, 50.f);
@@ -28,11 +36,20 @@ PlayScene::PlayScene(const wstring & name, const wstring & room_name,
 	_player_map[_my_id] = player_t(name, GetNextColor());
 	_me = &_player_map[_my_id];
 
+	_gamelog.imbue(locale("korean"));
+
 	SyncPlayers();
 
 	NetInterface::RegisterClientIntroCallback([this](const client_t & cl_info)
 	{
 		AddPlayer(cl_info);
+		UpdatePlayerText();
+	});
+
+	NetInterface::RegisterClientGoneCallback([this](const client_t & cl_info)
+	{
+		_player_map.erase(cl_info.id);
+		UpdatePlayerText();
 	});
 	
 	NetInterface::RegisterPacketCallback(SV_TO_CL_CHAT, [this](Packet & packet)
@@ -44,17 +61,6 @@ PlayScene::PlayScene(const wstring & name, const wstring & room_name,
 		_chat_box.AddChatMsg(player.color, player.name,
 			Color(235, 235, 255), msg);
 		G.sfx_mgr.Play(SFX_LEAVE_CHAT);
-	});
-
-	NetInterface::RegisterPacketCallback(SV_TO_CL_SCRIPT_ERROR, [this](Packet & packet)
-	{
-		wstring scriptname;
-		wstring msg;
-		wstring admsg;
-		if (!(packet >> scriptname >> msg >> admsg)) return;
-		G.logger->Warning(L"[" + scriptname + L"]" + msg + "\n" + admsg);
-		_chat_box.AddInfoMsg(scriptname + L"에서 오류 발생! 자세한 내용은 log.txt참고");
-		G.sfx_mgr.Play(SFX_OMG);
 	});
 
 	NetInterface::RegisterPacketCallback(SV_TO_CL_REGISTER_DENIED, [this](Packet & packet)
@@ -92,6 +98,16 @@ PlayScene::PlayScene(const wstring & name, const wstring & room_name,
 		}
 		else
 		{
+			// start
+			_continuous_draw_count = 0;
+			_round = 0;
+			_gamelog
+				<< L"---- Round begin : "
+				<< _left_gamer.GetText()
+				<< L" vs "
+				<< _right_gamer.GetText()
+				<< endl;
+			while(!_result_queue.empty()) _result_queue.pop();
 			G.attract_music->stop();
 			G.fight_music->reset();
 			G.fight_music->play();
@@ -102,26 +118,13 @@ PlayScene::PlayScene(const wstring & name, const wstring & room_name,
 	{
 		if (!_left_exists || !_right_exists) return;
 
-		size_t nr_result;
-		if (!(packet >> nr_result)) return;
+		basic_packet_t basic;
+		packet >> basic;
 
-		for (size_t i = 0U; i < nr_result; ++i)
+		for (auto & pair : basic.results)
 		{
-			sf::Uint16 __left, __right;
-			hand_t left, right;
-			if (!(packet >> __left >> __right)) return;
-			left = static_cast<hand_t>(__left);
-			right = static_cast<hand_t>(__right);
-			result_t result;
-			result.left = left;
-			result.right = right;
-			_result_queue.push(result);
+			_result_queue.push(pair);
 		}
-
-		sf::Uint16 left_penalty, right_penalty;
-		if (!(packet >> left_penalty >> right_penalty)) return;
-		for (auto i = 0U; i < left_penalty; ++i) _left_gamer.DecreaseHealth();
-		for (auto i = 0U; i < right_penalty; ++i) _right_gamer.DecreaseHealth();
 	});
 
 	NetInterface::RegisterPacketCallback(SV_TO_CL_UNREGISTER, [this](Packet & packet)
@@ -240,10 +243,17 @@ PlayScene::PlayScene(const wstring & name, const wstring & room_name,
 
 	_file_menu.setRotation(35.f);
 	_file_menu.setPosition(430.f, 270.f);
+	
+	_player_text.setPosition(550.f, 130.f);
+	_player_text.setColor(Color::White);
+	UpdatePlayerText();
+
+	FitScaleToScreen(&_bg);
 }
 
 PlayScene::~PlayScene()
 {
+	_gamelog.close();
 	if (_is_host) EndSvService();
 }
 
@@ -310,6 +320,7 @@ void PlayScene::Go()
 	HandleNetwork();
 	_chat_box.Update();
 
+	G.window.draw(_bg);
 	if (_left_exists) G.window.draw(_left_gamer);
 	if (_right_exists) G.window.draw(_right_gamer);
 	if (!_right_exists || !_left_exists)
@@ -320,58 +331,111 @@ void PlayScene::Go()
 			G.window.draw(_file_menu);
 	}
 	G.window.draw(_chat_box);
+	G.window.draw(_player_text);
 	G.window.draw(_pop);
+}
+
+void PlayScene::HandleGameResult()
+{
+	if ((!_left_gamer.IsDead() && _right_gamer.IsDead()) ||
+		(!_left_gamer.IsDead() && !_right_gamer.IsDead() && _left_gamer.GetHealth() > _right_gamer.GetHealth()))
+	{
+		wstring msg = _left_gamer.GetText();
+		msg += L" 승리!";
+		_gamelog << msg << endl;
+		_pop.Show(msg.c_str());
+		G.sfx_mgr.Play(SFX_WIN);
+		SendGameOverAckPacket();
+		assert(_result_queue.empty());
+	}
+	else if ((_left_gamer.IsDead() && !_right_gamer.IsDead()) ||
+		(!_left_gamer.IsDead() && !_right_gamer.IsDead() && _left_gamer.GetHealth() < _right_gamer.GetHealth()))
+	{
+		wstring msg = _right_gamer.GetText();
+		msg += L" 승리!";
+		_gamelog << msg << endl;
+		_pop.Show(msg.c_str());
+		G.sfx_mgr.Play(SFX_WIN);
+		SendGameOverAckPacket();
+		assert(_result_queue.empty());
+	}
+	else
+	{
+		_pop.Show(L"비겼습니다.");
+		_gamelog << L"비겼습니다." << endl;
+		G.sfx_mgr.Play(SFX_WIN);
+		SendGameOverAckPacket();
+		assert(_result_queue.empty());
+	}
 }
 
 void PlayScene::HandleQueue()
 {
 	_accum_time += G.delta_time;
-	if (_accum_time > 40)
+
+	int gotime = 30;
+	if (_left_gamer.GetHealth() < MAX_HP / 3 || _right_gamer.GetHealth() < MAX_HP / 3)
+		gotime = 50;
+	if (_left_gamer.GetHealth() < 20 || _right_gamer.GetHealth() < 20)
+		gotime = 200;
+
+	if (_accum_time > gotime)
 	{
-		_accum_time -= 40;
+		_accum_time -= gotime;
 		if (!_result_queue.empty())
 		{
-			result_t result = _result_queue.front();
-			_result_queue.pop();
-			hand_t left = result.left;
-			hand_t right = result.right;
+			auto & pair = _result_queue.front();
+
+			hand_t left = (hand_t)pair.first.hand;
+			hand_t right = (hand_t)pair.second.hand;
 			_left_gamer.SetHand(left);
 			_right_gamer.SetHand(right);
-			if (GetPoint(left, right) < 0) _left_gamer.DecreaseHealth();
-			if (GetPoint(right, left) < 0) _right_gamer.DecreaseHealth();
+			if (GetPoint(left, right) < 0)
+			{
+				_left_gamer.DecreaseHealth(1);
+				_continuous_draw_count = 0;
+			}
+			else if (GetPoint(right, left) < 0)
+			{
+				_right_gamer.DecreaseHealth(1);
+				_continuous_draw_count = 0;
+			}
+			else
+				_continuous_draw_count++;
 
-			if (_left_gamer.IsDead() && _right_gamer.IsDead())
+			if (pair.first.penalty) _left_gamer.DecreaseHealth(pair.first.penalty);
+			if (pair.second.penalty) _right_gamer.DecreaseHealth(pair.second.penalty);
+			
+			if (pair.first.log.length() || pair.second.log.length())
 			{
-				_pop.Show(L"비겼네요");
-				G.sfx_mgr.Play(SFX_WIN);
-				SendGameOverAckPacket();
-				assert(_result_queue.empty());
+				_gamelog << L"--- Round" << _round << endl;
+				if (pair.first.log.length())
+				{
+					_gamelog << L"-- "  << _left_gamer.GetText() << L" :" << endl;
+					_gamelog << pair.first.log;
+				}
+				if (pair.second.log.length())
+				{
+					_gamelog << L"-- "  << _right_gamer.GetText() << L" :" << endl;
+					_gamelog << pair.second.log;
+				}
+				_gamelog.flush();
 			}
-			else if (!_left_gamer.IsDead() && _right_gamer.IsDead())
+			_result_queue.pop();
+
+			if (_left_gamer.IsDead() || _right_gamer.IsDead() ||
+				_continuous_draw_count > MAX_CONTINUOUS_DRAW)
 			{
-				wstring msg = _left_gamer.GetText();
-				msg += L" 승리!";
-				_pop.Show(msg.c_str());
-				G.sfx_mgr.Play(SFX_WIN);
-				SendGameOverAckPacket();
-				assert(_result_queue.empty());
+				HandleGameResult();
 			}
-			else if (_left_gamer.IsDead() && !_right_gamer.IsDead())
-			{
-				wstring msg = _right_gamer.GetText();
-				msg += L" 승리!";
-				_pop.Show(msg.c_str());
-				G.sfx_mgr.Play(SFX_WIN);
-				SendGameOverAckPacket();
-				assert(_result_queue.empty());
-			}
+			else
+				_round++;
 		}
 	}
 }
 
 void PlayScene::HandleNetwork()
 {
-	
 }
 
 void PlayScene::AddPlayer(const client_t & basic_info)
@@ -394,4 +458,14 @@ void PlayScene::SendGameOverAckPacket()
 	Packet send_packet;
 	send_packet << TO_UINT16(CL_TO_SV_GAME_OVER);
 	SafeSend(send_packet);
+}
+
+void PlayScene::UpdatePlayerText()
+{
+	wstringstream ws;
+	for (auto player : _player_map)
+	{
+		ws << player.element().name << endl;
+	}
+	_player_text.setString(ws.str());
 }

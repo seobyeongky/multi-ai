@@ -42,9 +42,11 @@ namespace SvDirector
 				{
 				case SVMSG_NEW_CLIENT:
 					svG.client_map[msg.client_info.id].basic_info = msg.client_info;
+					scene->HandleNewCl(msg.client_info);
 					break;
 				case SVMSG_CLIENT_GONE:
 					svG.client_map.erase(msg.client_info.id);
+					scene->HandleGoneCl(msg.client_info);
 					break;
 				case SVMSG_PACKET_RECV:
 					{
